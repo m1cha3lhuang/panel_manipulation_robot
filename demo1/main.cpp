@@ -40,8 +40,8 @@ bool fSimulationRunning = false;
 void control(Model::ModelInterface* robot, Simulation::SimulationInterface* sim);
 void simulation(Model::ModelInterface* robot, Simulation::SimulationInterface* sim);
 
-// bool f_global_sim_pause = false; // use with caution!
-bool f_global_sim_pause = true; // use with caution!
+bool f_global_sim_pause = false; // use with caution!
+// bool f_global_sim_pause = true; // use with caution!
 
 // initialize window manager
 GLFWwindow* glfwInitialize();
@@ -151,6 +151,10 @@ void control(Model::ModelInterface* robot, Simulation::SimulationInterface* sim)
 
 		// update kinematic models
 		robot->updateModel();
+
+		robot->gravityVector(tau_grav);
+
+		sim->setJointTorques(robot_name, tau_grav+tau);
 
 		// update last time
 		last_time = curr_time;
