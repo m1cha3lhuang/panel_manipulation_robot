@@ -1,0 +1,53 @@
+<?xml version="1.0" ?>
+
+<world name="demo_world" gravity="0.0 0.0 -0.00">
+
+	<robot name="Robot1">
+		<!-- model node is required -->
+		<model dir="resources/demo1/" path="robot.urdf" name="5DOF_SCARA" />
+		<!-- origin node is optional -->
+		<origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
+	</robot>
+
+	<light name="light1" type="directional">
+		<position xyz="3.0 -3.0 3.0" />
+		<lookat xyz="0.0 0.0 2.0" />
+	</light>
+
+	<light name="light2" type="directional">
+		<position xyz="3.0 3.0 3.0" />
+		<lookat xyz="0.0 0.0 2.0" />
+	</light>
+
+<!-- 	<light name="light3" type="directional">
+		<position xyz="0.0 0.0 4.0" />
+		<lookat xyz="0.0 0.0 0.0" />
+	</light> -->
+
+<!-- 	<light name="light_spot" type="spot">
+		<position xyz="4.0 0.0 3.0" />
+		<lookat xyz="0.0 0.0 1.0" />
+	</light> -->
+	<camera name="camera_front">
+		<position xyz="4.0 0.0 2.0" />
+		<vertical xyz="0.0 0.0 1.0" />
+		<lookat xyz="0.0 0.0 1.0" />
+	</camera>
+	<camera name="camera_top">
+		<position xyz="1.2 1.2 4.0" />
+		<vertical xyz="-1.0 0.0 0.0" />
+		<lookat xyz="1.2 1.2 0.0" />
+	</camera>
+	<camera name="camera_side">
+		<position xyz="0.0 -3.0 2.0" />
+		<vertical xyz="0.0 0.0 1.0" />
+		<lookat xyz="0.0 0.0 0.5" />
+	</camera>
+	<camera name="camera_isometric">
+		<position xyz="2.5 -2.5 3.0" />
+		<vertical xyz="0.0 0.0 1.0" />
+		<lookat xyz="0.0 0.0 0.0" />
+	</camera>
+
+	<!-- TODO: support stereo specification -->
+</world>
