@@ -63,6 +63,9 @@ _b_spring(0.002)
 	// enable dynamics
 	_dyn_button->enableDynamics(true);
 
+	// set button to OFF
+	_joint_button->setPos(-M_PI/7.0);
+
 	// set local position of the button in the graphic world
 	setLocalPos(world_pos);
 	setLocalRot(world_ori);
@@ -71,6 +74,12 @@ _b_spring(0.002)
 ToggleButton::~ToggleButton() {
 	delete _mesh_button; //auto deletes child meshes
 	delete _dyn_button; // this does not auto delete links and joints, oh well.
+}
+
+ToggleButton::State ToggleButton::getState() const {
+	ToggleButton::State ret_state;
+	ret_state = (_joint_button->getPos() > M_PI/10.0)? ToggleButton::On: ToggleButton::Off;
+	return ret_state;
 }
 
 void ToggleButton::updateGraphics() {
@@ -85,6 +94,11 @@ void ToggleButton::updateGraphics() {
 void ToggleButton::updateDynamics() {
 	// compute button torque and set torque
 	// _joint_button->setForce(0.0);
-	_joint_button->setForce(-_k_spring*_joint_button->getPos() - _b_spring*_joint_button->getVel());
+	double curr_pos = _joint_button->getPos();
+	double set_pos = M_PI/7.0;
+	if (curr_pos < 0.0) {
+		set_pos = -M_PI/7.0;
+	}
+	_joint_button->setForce(-_k_spring*(curr_pos - set_pos) - _b_spring*_joint_button->getVel());
 }
 

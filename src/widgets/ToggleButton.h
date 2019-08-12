@@ -25,8 +25,8 @@ public:
 	// update dynamics
 	void updateDynamics();
 
-	// // get current state
-	// State getState() const;
+	// get current state
+	State getState() const;
 
 	// // inspect internal force
 	// double getTorque() const;
