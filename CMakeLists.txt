@@ -7,7 +7,8 @@ SET(CMAKE_CXX_FLAGS "-std=c++11 -I/usr/include -I/usr/local/include")
 set (COMMON_SOURCE
 	${PROJECT_SOURCE_DIR}/src/timer/LoopTimer.h
 	${PROJECT_SOURCE_DIR}/src/force_sensor/ForceSensorSim.h
-	${PROJECT_SOURCE_DIR}/src/force_sensor/ForceSensorDisplay.h)
+	${PROJECT_SOURCE_DIR}/src/force_sensor/ForceSensorDisplay.h
+	${PROJECT_SOURCE_DIR}/src/widgets/ToggleButton.cpp)
 include_directories(${PROJECT_SOURCE_DIR}/src)
 
 # # set common dependencies

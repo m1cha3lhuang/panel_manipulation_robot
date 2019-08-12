@@ -65,9 +65,9 @@
 		<lookat xyz="1.2 1.2 0.0" />
 	</camera>
 	<camera name="camera_side">
-		<position xyz="0.0 -3.0 2.0" />
+		<position xyz="0.2 0.35 1.04" />
 		<vertical xyz="0.0 0.0 1.0" />
-		<lookat xyz="0.0 0.0 0.5" />
+		<lookat xyz="0.2 0.2 1.04" />
 	</camera>
 	<camera name="camera_isometric">
 		<position xyz="2.5 -2.5 3.0" />

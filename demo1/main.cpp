@@ -9,7 +9,7 @@
 #include "model/ModelInterface.h"
 #include "graphics/GraphicsInterface.h"
 #include "graphics/ChaiGraphics.h"
-#include "simulation/SimulationInterface.h"
+#include "simulation/Sai2Simulation.h"
 #include "chai3d.h"
 
 #include "timer/LoopTimer.h"
@@ -18,6 +18,8 @@
 // #include "force_sensor/ForceSensorDisplay.h"
 
 #include <GLFW/glfw3.h> //must be loaded after loading opengl/glew as part of graphicsinterface
+
+#include "widgets/ToggleButton.h"
 
 using namespace std;
 using namespace Eigen;
@@ -34,14 +36,15 @@ const string end_effector_name = "link4";
 Eigen::VectorXd q_home;
 // ForceSensorSim* tool_force_sensor;
 // ForceSensorDisplay* tool_force_display;
+ToggleButton* button;
 
 // simulation loop
 bool fSimulationRunning = false;
-void control(Model::ModelInterface* robot, Simulation::SimulationInterface* sim);
-void simulation(Model::ModelInterface* robot, Simulation::SimulationInterface* sim);
+void control(Model::ModelInterface* robot, Simulation::Sai2Simulation* sim);
+void simulation(Model::ModelInterface* robot, Simulation::Sai2Simulation* sim);
 
-bool f_global_sim_pause = false; // use with caution!
-// bool f_global_sim_pause = true; // use with caution!
+// bool f_global_sim_pause = false; // use with caution!
+bool f_global_sim_pause = true; // use with caution!
 
 // initialize window manager
 GLFWwindow* glfwInitialize();
@@ -63,7 +66,7 @@ int main (int argc, char** argv) {
 	auto robot = new Model::ModelInterface(robot_fname, Model::rbdl, Model::urdf, false);
 
 	// load simulation world
-	auto sim = new Simulation::SimulationInterface(world_fname, Simulation::sai2simulation, Simulation::urdf, false);
+	auto sim = new Simulation::Sai2Simulation(world_fname, Simulation::urdf, false);
 
 	// set initial condition
 	q_home.setZero(robot->dof());
@@ -75,6 +78,11 @@ int main (int argc, char** argv) {
 	robot->_q = q_home;
 	sim->setJointPositions(robot_name, robot->_q);
 	robot->updateModel();
+
+	// togglebutton
+	button = new ToggleButton("Button1", cVector3d(0.2, 0.2, 1.0), cIdentity3d(), sim);
+	button->_joint_button->setPos(M_PI/6.0);
+	graphics->_world->addChild(button);
 
 	// initialize GLFW window
 	GLFWwindow* window = glfwInitialize();
@@ -97,6 +105,7 @@ int main (int argc, char** argv) {
 		int width, height;
 		glfwGetFramebufferSize(window, &width, &height);
 		graphics->updateGraphics(robot_name, robot);
+		button->updateGraphics();
 		graphics->render(camera_name, width, height);
 		glfwSwapBuffers(window);
 		glFinish();
@@ -120,7 +129,7 @@ int main (int argc, char** argv) {
 }
 
 //------------------------------------------------------------------------------
-void control(Model::ModelInterface* robot, Simulation::SimulationInterface* sim) {
+void control(Model::ModelInterface* robot, Simulation::Sai2Simulation* sim) {
 	// create a timer
 	LoopTimer timer;
 	timer.initializeTimer();
@@ -162,7 +171,7 @@ void control(Model::ModelInterface* robot, Simulation::SimulationInterface* sim)
 }
 
 //------------------------------------------------------------------------------
-void simulation(Model::ModelInterface* robot, Simulation::SimulationInterface* sim) {
+void simulation(Model::ModelInterface* robot, Simulation::Sai2Simulation* sim) {
 	fSimulationRunning = true;
 
 	// create a timer
@@ -179,6 +188,7 @@ void simulation(Model::ModelInterface* robot, Simulation::SimulationInterface* s
 		double curr_time = timer.elapsedTime();
 		double loop_dt = curr_time - last_time;
 		if (!f_global_sim_pause) {
+			button->updateDynamics();
 			sim->integrate(loop_dt);
 		}
 
@@ -250,5 +260,10 @@ void keySelect(GLFWwindow* window, int key, int scancode, int action, int mods)
     {
         // change camera
         camera_name = "camera_top";
+    }
+    if ((key == '3') && action == GLFW_PRESS)
+    {
+        // change camera
+        camera_name = "camera_side";
     }
 }
