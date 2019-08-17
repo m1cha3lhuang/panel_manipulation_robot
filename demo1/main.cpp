@@ -43,8 +43,8 @@ bool fSimulationRunning = false;
 void control(Model::ModelInterface* robot, Simulation::Sai2Simulation* sim);
 void simulation(Model::ModelInterface* robot, Simulation::Sai2Simulation* sim);
 
-// bool f_global_sim_pause = false; // use with caution!
-bool f_global_sim_pause = true; // use with caution!
+bool f_global_sim_pause = false; // use with caution!
+// bool f_global_sim_pause = true; // use with caution!
 
 // initialize window manager
 GLFWwindow* glfwInitialize();
@@ -80,8 +80,8 @@ int main (int argc, char** argv) {
 	robot->updateModel();
 
 	// togglebutton
-	button = new ToggleButton("Button1", cVector3d(0.2, 0.2, 1.0), cIdentity3d(), sim);
-	button->_joint_button->setPos(M_PI/6.0);
+	button = new ToggleButton("Button1", cVector3d(1.0, 1.0, 0.475), cIdentity3d(), sim);
+	button->_joint_button->setPos(-M_PI/10.0);
 	graphics->_world->addChild(button);
 
 	// initialize GLFW window
@@ -133,15 +133,17 @@ void control(Model::ModelInterface* robot, Simulation::Sai2Simulation* sim) {
 	// create a timer
 	LoopTimer timer;
 	timer.initializeTimer();
-	timer.setLoopFrequency(500); //500Hz timer
+	timer.setLoopFrequency(800); //800Hz timer
 	double last_time = timer.elapsedTime(); //secs
 
 	// control variables
 	Eigen::VectorXd tau(robot->dof());
 	tau.setZero();
 	Eigen::VectorXd tau_grav(robot->dof());
+	Eigen::MatrixXd Jv, Lambda_v, N_v;
+	Eigen::Vector3d vel_control, ee_pos;
 
-	Eigen::Vector3d ee_link_pos(0.0, 0.0, 0.4);
+	Eigen::Vector3d ee_link_pos(0.1, 0.0, 0.0);
 
 	bool fTimerDidSleep = true;
 	while (fSimulationRunning) { //automatically set to false when simulation is quit
@@ -163,7 +165,25 @@ void control(Model::ModelInterface* robot, Simulation::Sai2Simulation* sim) {
 
 		robot->gravityVector(tau_grav);
 
-		sim->setJointTorques(robot_name, tau_grav+tau);
+		robot->Jv(Jv, end_effector_name, ee_link_pos);
+		robot->position(ee_pos, end_effector_name, ee_link_pos);
+
+		Lambda_v = (Jv*robot->_M*Jv.transpose()).inverse();
+		N_v = (Eigen::MatrixXd::Identity(robot->dof(), robot->dof()) - robot->_M*Jv.transpose()*Lambda_v*Jv);
+
+		vel_control = (Eigen::Vector3d(1.03, 1.0, 0.45) - ee_pos)*30.0/30.0;
+		double speed_control = vel_control.norm();
+		if(speed_control > 0.1) {
+			vel_control = 0.1*vel_control/speed_control;
+		}
+		// cout << (Jv*Jv.transpose()).determinant() << endl;
+
+		// cout << tau.transpose() << endl;
+		tau = (-Jv.transpose() *Lambda_v* 30.0*(Jv*robot->_dq - vel_control)) + N_v.transpose()*robot->_M*(-20.0*(robot->_q - q_home) - 10.0*robot->_dq);
+		// tau = -Jv.transpose() * Lambda_v * 10.0*(Jv*robot->_dq - vel_control);
+		// cout << tau.transpose() << endl;
+
+		sim->setJointTorques(robot_name, tau+tau_grav);
 
 		// update last time
 		last_time = curr_time;
@@ -177,7 +197,7 @@ void simulation(Model::ModelInterface* robot, Simulation::Sai2Simulation* sim) {
 	// create a timer
 	LoopTimer timer;
 	timer.initializeTimer();
-	timer.setLoopFrequency(1000); //1kHz timer
+	timer.setLoopFrequency(1500); //1.5kHz timer
 	double last_time = timer.elapsedTime(); //secs
 
 	bool fTimerDidSleep = true;
