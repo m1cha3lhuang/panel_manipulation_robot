@@ -80,8 +80,7 @@ int main (int argc, char** argv) {
 	robot->updateModel();
 
 	// togglebutton
-	button = new ToggleButton("Button1", cVector3d(1.0, 1.0, 0.475), cIdentity3d(), sim);
-	button->_joint_button->setPos(-M_PI/10.0);
+	button = new ToggleButton("Button1", Vector3d(1.0, 1.0, 0.475), Matrix3d::Identity(), sim);
 	graphics->_world->addChild(button);
 
 	// initialize GLFW window
