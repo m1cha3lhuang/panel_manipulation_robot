@@ -69,10 +69,20 @@
 		<vertical xyz="0.0 0.0 1.0" />
 		<lookat xyz="1.0 1.0 0.55" />
 	</camera>
+	<camera name="camera_oppside">
+		<position xyz="1.0 0.1 0.7" />
+		<vertical xyz="0.0 0.0 1.0" />
+		<lookat xyz="1.0 1.0 0.55" />
+	</camera>
 	<camera name="camera_isometric">
 		<position xyz="2.5 -2.5 3.0" />
 		<vertical xyz="0.0 0.0 1.0" />
 		<lookat xyz="0.0 0.0 0.0" />
+	</camera>
+	<camera name="camera_frontside">
+		<position xyz="2.5 0.6 0.7" />
+		<vertical xyz="0.0 0.0 1.0" />
+		<lookat xyz="1.6 0.6 0.5" />
 	</camera>
 
 	<!-- TODO: support stereo specification -->
