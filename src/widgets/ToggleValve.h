@@ -1,31 +1,31 @@
-/* ToggleButton3.h: Class representing a toggle button3
+/* ToggleValve.h: Class representing a toggle valve
 */
-#ifndef TOGGLE_Button3_H
-#define TOGGLE_Button3_H
+#ifndef TOGGLE_VALVE_H
+#define TOGGLE_VALVE_H
 
 #include "simulation/Sai2Simulation.h"
 #include <chai3d.h>
 #include <dynamics3d.h>
 #include <Eigen/Dense>
 
-struct ToggleButton3Properties {
-	// geometry. cannot be changed after button3 object has been constructed.
-	chai3d::cVector3d bottom_part_extents; // length, width, height of button3 base part
-	chai3d::cVector3d top_part_extents; // length, width, height of button3 moving part
+struct ToggleValveProperties {
+	// geometry. cannot be changed after valve object has been constructed.
+	chai3d::cVector3d bottom_part_extents; // length, width, height of valve base part
+	chai3d::cVector3d top_part_extents; // length, width, height of valve moving part
 	chai3d::cVector3d top_part_relpos; // x, y, z position of top part wrt bottom part
 
-	// graphics. can be changed after button3 object has been constructed.
+	// graphics. can be changed after valve object has been constructed.
 	chai3d::cColorf bottom_part_color;
 	chai3d::cColorf top_part_color;
 
-	// dynamics. can be changed after button3 object has been constructed.
+	// dynamics. can be changed after valve object has been constructed.
 	double top_part_mass; // mass of top part in kg
 	chai3d::cVector3d top_part_inertia; // Ixx, Iyy and Izz for the top part at COM
-	double k_spring; // button3 spring constant
-	double k_damper; // button3 damping constant
+	double k_spring; // valve spring constant
+	double k_damper; // valve damping constant
 
 	// constructor with default properties
-	ToggleButton3Properties()
+	ToggleValveProperties()
 	: bottom_part_extents(chai3d::cVector3d(0.04, 0.06, 0.06)),
 	top_part_extents(chai3d::cVector3d(0.037, 0.25, 0.015)),
 	top_part_relpos(chai3d::cVector3d(0.0,0.0,0.075)),
@@ -40,24 +40,24 @@ struct ToggleButton3Properties {
 };
 
 
-class ToggleButton3: public chai3d::cGenericObject {
+class ToggleValve: public chai3d::cGenericObject {
 public:
 	// states def
 	enum State {Off, On};
 
 public:
 	// ctor with default properties
-	// NOTE: button3 is created fixed to the simulation world at the given location.
+	// NOTE: valve is created fixed to the simulation world at the given location.
 	// Only the top part of it moves.
-	ToggleButton3(const std::string& name, const Eigen::Vector3d& world_pos, const Eigen::Matrix3d& world_ori, const Simulation::Sai2Simulation* simulation);
+	ToggleValve(const std::string& name, const Eigen::Vector3d& world_pos, const Eigen::Matrix3d& world_ori, const Simulation::Sai2Simulation* simulation);
 
 	// ctor with custom properties
-	// NOTE: button3 is created fixed to the simulation world at the given location.
+	// NOTE: valve is created fixed to the simulation world at the given location.
 	// Only the top part of it moves.
-	ToggleButton3(const ToggleButton3Properties& properties, const std::string& name, const Eigen::Vector3d& world_pos, const Eigen::Matrix3d& world_ori, const Simulation::Sai2Simulation* simulation);
+	ToggleValve(const ToggleValveProperties& properties, const std::string& name, const Eigen::Vector3d& world_pos, const Eigen::Matrix3d& world_ori, const Simulation::Sai2Simulation* simulation);
 
 	// dtor
-	~ToggleButton3();
+	~ToggleValve();
 
 	// update graphics. needs to be called from the application graphics loop.
 	void updateGraphics();
@@ -66,16 +66,16 @@ public:
 	void updateDynamics();
 
 	// get current state
-	// default state is Off when button3 is created
+	// default state is Off when valve is created
 	State getState() const;
 
-	// set button3 state.
-	/* Note: Leads to undefined behavior if called when button3 is in contact
+	// set valve state.
+	/* Note: Leads to undefined behavior if called when valve is in contact
 		 with another object */
 	void setState(State state);
 
-	// set button3 angle in range [-1.0, 1.0]. -1.0 is off, 1.0 is on.
-	/* Note: Leads to undefined behavior if called when button3 is in contact
+	// set valve angle in range [-1.0, 1.0]. -1.0 is off, 1.0 is on.
+	/* Note: Leads to undefined behavior if called when valve is in contact
 		 with another object */
 	void setAngle(double angle);
 
@@ -87,11 +87,11 @@ public:
 
 private:
 	// hide default constructor
-	ToggleButton3() {};
+	ToggleValve() {};
 
 private:
 	// properties
-	ToggleButton3Properties _prop;
+	ToggleValveProperties _prop;
 
 	// world position
 	Eigen::Affine3d _world_pose;
@@ -100,12 +100,12 @@ private:
 	double _joint_extent;
 
 	// graphic representations
-	chai3d::cMultiMesh* _mesh_button3;
-	chai3d::cMesh* _mesh_button3_top;
+	chai3d::cMultiMesh* _mesh_valve;
+	chai3d::cMesh* _mesh_valve_top;
 
 	// dynamics representation
-	cDynamicBase* _dyn_button3;
-	cDynamicJoint* _joint_button3;
+	cDynamicBase* _dyn_valve;
+	cDynamicJoint* _joint_valve;
 };
 
-#endif //TOGGLE_Button3_H
+#endif //TOGGLE_VALVE_H

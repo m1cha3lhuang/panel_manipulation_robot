@@ -22,8 +22,8 @@
 #include <GLFW/glfw3.h> //must be loaded after loading opengl/glew as part of graphicsinterface
 
 #include "widgets/ToggleButton.h"
-#include "widgets/ToggleButton3.h"
-#include "widgets/ToggleButton2.h"
+#include "widgets/ToggleValve.h"
+#include "widgets/ToggleLever.h"
 
 using namespace std;
 using namespace Eigen;
@@ -36,9 +36,8 @@ string camera_name = "camera_front";
 const string end_effector_name = "link4";
 bool target_reached = false;
 
-//initalize target list
+//target list
 double targets [][6] = {{1.0, 1.0, 1.0}, {0.7, 0.7, 0.55}, {1.3, 0.7, 0.6}, {1.3,0.62,0.5}, {1.6, 0.62, 0.5}, {1.0, 1.0, 1.0}};
-
 
 // global variables
 Eigen::VectorXd q_home;
@@ -46,8 +45,8 @@ Eigen::Vector3d target_pos;
 // ForceSensorSim* tool_force_sensor;
 // ForceSensorDisplay* tool_force_display;
 ToggleButton* button;
-ToggleButton3* button3;
-ToggleButton2* button2;
+ToggleValve* valve;
+ToggleLever* lever;
 
 // simulation loop
 bool fSimulationRunning = false;
@@ -87,28 +86,18 @@ int main (int argc, char** argv) {
                 -90.0/180.0*M_PI,
                 45.0/180.0*M_PI,
                 90.0/180.0*M_PI;
-    
+
 	robot->_q = q_home;
 	sim->setJointPositions(robot_name, robot->_q);
 	robot->updateModel();
-//    Eigen::VectorXd q_pos_1;
-//    q_pos_1 << 1.0,
-//    87.3/180.0*M_PI,
-//    -110.0/180.0*M_PI,
-//    45.0/180.0*M_PI,
-//    90.0/180.0*M_PI;
-//    robot->_q = q_pos_1;
-//    sim->setJointPositions(robot_name, robot->_q);
-//    robot->updateModel();
 
-
-	// togglebutton
+	// togglewidgits
 	button = new ToggleButton("Button1", Vector3d(1.0, 1.0, 0.475), Matrix3d::Identity(), sim);
 	graphics->_world->addChild(button);
-    button2 = new ToggleButton2("Button2", Vector3d(1.0, 0.7, 0.475), Matrix3d::Identity(), sim);
-    graphics->_world->addChild(button2);
-    button3 = new ToggleButton3("Button3", Vector3d(1.4, 0.7, 0.475), Matrix3d::Identity(), sim);
-    graphics->_world->addChild(button3);
+    lever = new ToggleLever("Lever", Vector3d(1.0, 0.7, 0.475), Matrix3d::Identity(), sim);
+    graphics->_world->addChild(lever);
+    valve = new ToggleValve("Valve", Vector3d(1.4, 0.7, 0.475), Matrix3d::Identity(), sim);
+    graphics->_world->addChild(valve);
 	// initialize GLFW window
 	GLFWwindow* window = glfwInitialize();
 
@@ -119,10 +108,10 @@ int main (int argc, char** argv) {
 	thread sim_thread(simulation, robot, sim);
 
 	// next start the control thread
-    
+
 	thread ctrl_thread(control, robot, sim);
-    
-  
+
+
     // while window is open:
     while (!glfwWindowShouldClose(window)) {
 		// update kinematic models
@@ -133,8 +122,8 @@ int main (int argc, char** argv) {
 		glfwGetFramebufferSize(window, &width, &height);
 		graphics->updateGraphics(robot_name, robot);
 		button->updateGraphics();
-        button3->updateGraphics();
-        button2->updateGraphics();
+        valve->updateGraphics();
+        lever->updateGraphics();
 		graphics->render(camera_name, width, height);
 		glfwSwapBuffers(window);
 		glFinish();
@@ -157,6 +146,7 @@ int main (int argc, char** argv) {
 	return 0;
 }
 //------------------------------------------------------------------------------
+//change to target n+1 after target n has been reached
 void getTarget(int index){
     if(index > sizeof(targets)/sizeof(targets[0])){
         target_pos = Eigen::Vector3d(1.0, 1.0, 1.0);
@@ -165,7 +155,7 @@ void getTarget(int index){
         double x = targets[index][0];
         double y = targets[index][1];
         double z = targets[index][2];
-        cout << "target pos: " << x << y << z<< endl;
+        cout << "target pos: " << x << " " << y << " " << z<< endl;
         target_pos = Eigen::Vector3d(x, y, z);
     }
 }
@@ -186,7 +176,7 @@ void control(Model::ModelInterface* robot, Simulation::Sai2Simulation* sim) {
 	Eigen::MatrixXd Jv, Lambda_v, N_v;
 	Eigen::Vector3d vel_control, ee_pos;
     Eigen::Vector3d vel_control2;
-    double target_threshold = 0.02;
+    double target_threshold = 0.02; //how much error allowed before target is reached
     int target_num = 0;
 	Eigen::Vector3d ee_link_pos(0.1, 0.0, 0.0);
 
@@ -221,14 +211,9 @@ void control(Model::ModelInterface* robot, Simulation::Sai2Simulation* sim) {
 		if(speed_control > 0.1) {
 			vel_control = 0.1*vel_control/speed_control;
 		}
-        
-//         cout << (Jv*Jv.transpose()).determinant() << endl;
-//        cout << ee_pos.transpose() << endl;
-		// cout << tau.transpose() << endl;
+
 		tau = (-Jv.transpose() *Lambda_v* 30.0*(Jv*robot->_dq - vel_control)) + N_v.transpose()*robot->_M*(-20.0*(robot->_q - q_home) - 10.0*robot->_dq);
-//        tau = -Jv.transpose() * Lambda_v * 10.0*(Jv*robot->_dq - vel_control);
-//        cout << tau.transpose() << endl;
-//        cout << vel_control.norm() << endl;
+
 		sim->setJointTorques(robot_name, tau+tau_grav);
         if(vel_control.norm() < target_threshold){
             target_reached = true;
@@ -237,7 +222,7 @@ void control(Model::ModelInterface* robot, Simulation::Sai2Simulation* sim) {
             getTarget(target_num);
             target_num = target_num + 1;
         }
-        
+
 		// update last time
 		last_time = curr_time;
 	}
@@ -262,8 +247,8 @@ void simulation(Model::ModelInterface* robot, Simulation::Sai2Simulation* sim) {
 		double loop_dt = curr_time - last_time;
 		if (!f_global_sim_pause) {
 			button->updateDynamics();
-            button3->updateDynamics();
-            button2->updateDynamics();
+            valve->updateDynamics();
+            lever->updateDynamics();
 			sim->integrate(loop_dt);
 		}
 
