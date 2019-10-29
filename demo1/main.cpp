@@ -29,15 +29,29 @@ using namespace std;
 using namespace Eigen;
 using namespace chai3d;
 
+bool fHapticDeviceEnabled = false;
+Eigen::Vector3d haptic_device_velocity = Eigen::Vector3d::Zero();
+Eigen::Vector3d F_haptic = Eigen::Vector3d::Zero();
+
 const string world_fname = "resources/demo1/world.urdf";
 const string robot_fname = "resources/demo1/robot.urdf";
 const string robot_name = "Robot1";
 string camera_name = "camera_front";
 const string end_effector_name = "link4";
-bool target_reached = false;
+
+// initialize haptic device velocity and haptic feedback force
+double vhx = 0.0;
+double vhy = 0.0;
+double vhz = 0.0;
+double fzh = 0.0;
+double fyh = 0.0;
+double fxh = 0.0;
+
+// scale constant from haptic device velocity to simulation workspace
+double scale = 25.0;
+double gain = 1.0;
 
 //target list
-double targets [][6] = {{1.0, 1.0, 1.0}, {0.7, 0.7, 0.55}, {1.3, 0.7, 0.6}, {1.3,0.62,0.5}, {1.6, 0.62, 0.5}, {1.0, 1.0, 1.0}};
 
 // global variables
 Eigen::VectorXd q_home;
@@ -51,6 +65,7 @@ ToggleLever* lever;
 // simulation loop
 bool fSimulationRunning = false;
 void control(Model::ModelInterface* robot, Simulation::Sai2Simulation* sim);
+void haptic(cGenericHapticDevicePtr device);
 void simulation(Model::ModelInterface* robot, Simulation::Sai2Simulation* sim);
 
 bool f_global_sim_pause = false; // use with caution!
@@ -71,6 +86,22 @@ int main (int argc, char** argv) {
 	// load graphics scene
 	auto graphics_ext = new Graphics::GraphicsInterface(world_fname, Graphics::chai, Graphics::urdf, false);
 	Graphics::ChaiGraphics* graphics = dynamic_cast<Graphics::ChaiGraphics*> (graphics_ext->_graphics_internal);
+
+	// initialize the haptic device
+	auto handler = new cHapticDeviceHandler();
+	cGenericHapticDevicePtr hapticDevice;
+	handler->getDevice(hapticDevice, 0);
+	if (NULL == hapticDevice) {
+	cerr << "No haptic device found. " << endl;
+	fHapticDeviceEnabled = false;
+	} else {
+	cout << "Haptic device initialized and ready. " << endl;
+	hapticDevice->open();
+	hapticDevice->calibrate();
+	fHapticDeviceEnabled = true;
+	// if the device has a gripper, enable the gripper to simulate a user switch
+		hapticDevice->setEnableGripperUserSwitch(true);
+	}
 
 	// load robots
 	auto robot = new Model::ModelInterface(robot_fname, Model::rbdl, Model::urdf, false);
@@ -146,20 +177,6 @@ int main (int argc, char** argv) {
 	return 0;
 }
 //------------------------------------------------------------------------------
-//change to target n+1 after target n has been reached
-void getTarget(int index){
-    if(index > sizeof(targets)/sizeof(targets[0])){
-        target_pos = Eigen::Vector3d(1.0, 1.0, 1.0);
-    }
-    else{
-        double x = targets[index][0];
-        double y = targets[index][1];
-        double z = targets[index][2];
-        cout << "target pos: " << x << " " << y << " " << z<< endl;
-        target_pos = Eigen::Vector3d(x, y, z);
-    }
-}
-
 
 //------------------------------------------------------------------------------
 void control(Model::ModelInterface* robot, Simulation::Sai2Simulation* sim) {
@@ -176,9 +193,15 @@ void control(Model::ModelInterface* robot, Simulation::Sai2Simulation* sim) {
 	Eigen::MatrixXd Jv, Lambda_v, N_v;
 	Eigen::Vector3d vel_control, ee_pos;
     Eigen::Vector3d vel_control2;
-    double target_threshold = 0.02; //how much error allowed before target is reached
-    int target_num = 0;
+		double errorx = 0.0;
+		double errory = 0.0;
+		double errorz = 0.0;
 	Eigen::Vector3d ee_link_pos(0.1, 0.0, 0.0);
+
+	// get haptic device velocity
+	vhx = haptic_device_velocity[0];
+	vhy = haptic_device_velocity[1];
+	vhz = haptic_device_velocity[2];
 
 	bool fTimerDidSleep = true;
 	while (fSimulationRunning) { //automatically set to false when simulation is quit
@@ -190,6 +213,11 @@ void control(Model::ModelInterface* robot, Simulation::Sai2Simulation* sim) {
 		// update time
 		double curr_time = timer.elapsedTime();
 		double loop_dt = curr_time - last_time;
+
+		// haptic device pointer vector
+		Eigen::Vector3d hpos;
+		hpos <<vhx * scale, -vhz * scale ,vhy * scale;
+		// cout << "haptic device velocity: " << hpos << endl;
 
 		// read joint positions, velocities, update model
 		sim->getJointPositions(robot_name, robot->_q);
@@ -206,31 +234,40 @@ void control(Model::ModelInterface* robot, Simulation::Sai2Simulation* sim) {
 		Lambda_v = (Jv*robot->_M*Jv.transpose()).inverse();
 		N_v = (Eigen::MatrixXd::Identity(robot->dof(), robot->dof()) - robot->_M*Jv.transpose()*Lambda_v*Jv);
 
-		vel_control = (target_pos - ee_pos)*30.0/30.0;
+		vel_control = (hpos - ee_pos)*30.0/30.0;
+		errorx = hpos[0] - ee_pos[0];
+		errory = hpos[1] - ee_pos[1];
+		errorz = hpos[2] - ee_pos[2];
+
 		double speed_control = vel_control.norm();
 		if(speed_control > 0.1) {
 			vel_control = 0.1*vel_control/speed_control;
 		}
 
+		F_haptic << errorx*gain, errory*gain, errorz*gain;
+
 		tau = (-Jv.transpose() *Lambda_v* 30.0*(Jv*robot->_dq - vel_control)) + N_v.transpose()*robot->_M*(-20.0*(robot->_q - q_home) - 10.0*robot->_dq);
 
 		sim->setJointTorques(robot_name, tau+tau_grav);
-        if(vel_control.norm() < target_threshold){
-            target_reached = true;
-            target_reached = false;
-            cout << "target changed" << endl;
-            getTarget(target_num);
-            target_num = target_num + 1;
-        }
 
 		// update last time
 		last_time = curr_time;
 	}
 }
-
+//------------------------------------------------------------------------------
+void haptic(cGenericHapticDevicePtr device) {
+	cVector3d device_vel;
+	while (fHapticDeviceEnabled && fSimulationRunning) {
+		device->getLinearVelocity(device_vel);
+		haptic_device_velocity = device_vel.eigen();
+		// cout << haptic_device_velocity << endl;
+		device->setForce(F_haptic);
+	}
+}
 //------------------------------------------------------------------------------
 void simulation(Model::ModelInterface* robot, Simulation::Sai2Simulation* sim) {
 	fSimulationRunning = true;
+
 
 	// create a timer
 	LoopTimer timer;
